@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Color Match</title>
+<meta name="description" content="Point your phone camera at something and see how close its color is to a target color code.">
+<meta name="theme-color" content="#111113">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Color Match">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-camera="off" data-wb="off">
+<video id="cam" playsinline muted autoplay></video>
+<canvas id="freeze" hidden></canvas>
+<canvas id="mask" hidden></canvas>
+<div id="stage" aria-hidden="true">
+  <div id="best" class="best" hidden><span id="bestTag"></span></div>
+  <div id="ring" class="ring"></div>
+</div>
+
+<header class="top">
+  <button id="targetBtn" class="chipbtn" type="button" aria-label="Target color. Tap to change it.">
+    <i id="tSw"></i><span class="tcol"><small>Target</small><b id="tHex">#7B0323</b></span>
+  </button>
+  <button id="wbPill" class="pill" type="button" hidden aria-label="White balance is set. Tap to clear it.">White set ✕</button>
+  <button id="settingsBtn" class="iconbtn" type="button" aria-label="Settings">⚙</button>
+</header>
+
+<section class="panel" id="panel" aria-label="Reading">
+  <div class="verdict" id="verdict" data-state="idle">
+    <b id="vText" role="status">Aim the ring at something</b>
+    <span id="vDe"></span>
+  </div>
+  <div class="cmp">
+    <div class="side"><i id="seeSw"></i><span class="lbl">Seeing</span><b id="seeHex">–</b></div>
+    <div class="side"><i id="tgtSw"></i><span class="lbl">Target</span><b id="tgtHex">#7B0323</b></div>
+  </div>
+  <p id="bestInfo" class="info"></p>
+  <p id="hint" class="info" hidden>Held. Tap anywhere on the picture to read that spot.</p>
+  <div class="bar">
+    <button id="holdBtn" class="btn" type="button" aria-pressed="false">Hold</button>
+    <button id="hlBtn" class="btn" type="button" aria-pressed="false">Highlight</button>
+    <button id="wbBtn" class="btn" type="button">Set white</button>
+  </div>
+</section>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<div id="gate" class="gate">
+  <div class="card">
+    <h1>Color Match</h1>
+    <p id="gateMsg">Point your camera at something and see how close its color is to your target code.</p>
+    <button id="gateStart" class="btn primary big" type="button">Start camera</button>
+  </div>
+</div>
+
+<dialog id="targetDlg" aria-labelledby="tdTitle">
+  <form id="targetForm" novalidate>
+    <h2 id="tdTitle">Target color</h2>
+    <label for="hexIn">Color code</label>
+    <input id="hexIn" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="#7B0323">
+    <p id="hexErr" class="err" role="alert" hidden>That is not a color code. Try 7B0323, 7B 03 23 or 123,3,35.</p>
+    <label for="colIn">Or pick one</label>
+    <input id="colIn" type="color" value="#7b0323">
+    <div id="recents" class="recents" aria-label="Recent targets"></div>
+    <div class="row">
+      <button id="tdCancel" class="btn" type="button">Cancel</button>
+      <button id="useBtn" class="btn primary" type="submit">Use this color</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="settingsDlg" aria-labelledby="sdTitle">
+  <div class="sheet">
+    <h2 id="sdTitle">Settings</h2>
+    <label for="tolIn">Counts as a match within <output id="tolOut">ΔE 5</output></label>
+    <input id="tolIn" type="range" min="1" max="15" step="0.5" value="5">
+    <p class="note">"Close" is up to twice that. Lower is stricter. A camera in a shop is rarely better than about 3.</p>
+
+    <fieldset>
+      <legend>Brightness</legend>
+      <label class="opt"><input type="radio" name="kL" value="3"> Forgiving <small>(recommended in shops: lights and camera exposure change brightness a lot)</small></label>
+      <label class="opt"><input type="radio" name="kL" value="1"> Strict <small>(brightness counts fully)</small></label>
+    </fieldset>
+    <fieldset>
+      <legend>Ring size</legend>
+      <div class="seg">
+        <label><input type="radio" name="ring" value="S"><span>Small</span></label>
+        <label><input type="radio" name="ring" value="M"><span>Medium</span></label>
+        <label><input type="radio" name="ring" value="L"><span>Large</span></label>
+      </div>
+    </fieldset>
+
+    <div class="wbrow">
+      <span id="wbStatus">White not set</span>
+      <button id="wbReset" class="btn small" type="button">Clear</button>
+    </div>
+
+    <details>
+      <summary>How to use it in a shop</summary>
+      <ol class="note">
+        <li>Hold a sheet of plain white paper in the same light as the item. Put the ring on it and tap <b>Set white</b>. Do this again in each new shop or light.</li>
+        <li>Aim the ring at the item. Green means it matches your target code.</li>
+        <li>The green marker shows the closest spot in view, so you can scan a shelf for the right one.</li>
+        <li><b>Hold</b> freezes the picture. Tap anywhere on it to read that spot.</li>
+      </ol>
+      <p class="note">A phone camera is not a measuring instrument. Use this to pick the best candidate, then judge the final choice by eye in daylight.</p>
+    </details>
+    <div class="row"><button id="setClose" class="btn primary" type="button">Done</button></div>
+  </div>
+</dialog>
+
+<script src="color.js"></script>
+<script src="logic.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
