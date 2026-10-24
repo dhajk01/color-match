@@ -1,6 +1,6 @@
 // Offline support: the app files are cached on first visit, then served from the cache and refreshed in the background.
-const CACHE = 'colormatch-v1';
-const SHELL = ['./', 'index.html', 'style.css', 'color.js', 'logic.js', 'app.js', 'manifest.webmanifest',
+const CACHE = 'colormatch-v3';
+const SHELL = ['./', 'index.html', 'style.css', 'color.js', 'logic.js', 'items.js', 'app.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {

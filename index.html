@@ -24,13 +24,28 @@
   <div id="ring" class="ring"></div>
 </div>
 
-<header class="top">
+<header class="top" id="topbar">
   <button id="targetBtn" class="chipbtn" type="button" aria-label="Target color. Tap to change it.">
     <i id="tSw"></i><span class="tcol"><small>Target</small><b id="tHex">#7B0323</b></span>
   </button>
+  <div id="viewTabs" class="tabs" role="group" aria-label="View" hidden>
+    <button id="tabPic" class="tab" type="button" aria-pressed="true">Picture</button>
+    <button id="tabFound" class="tab" type="button" aria-pressed="false">Found <b id="foundBadge">0</b></button>
+  </div>
   <button id="wbPill" class="pill" type="button" hidden aria-label="White balance is set. Tap to clear it.">White set ✕</button>
   <button id="settingsBtn" class="iconbtn" type="button" aria-label="Settings">⚙</button>
 </header>
+
+<section id="found" class="found" aria-label="Items found while browsing" hidden>
+  <div class="found-head">
+    <b id="foundCount">Nothing yet</b>
+    <span class="grow"></span>
+    <button id="collectBtn" class="btn small" type="button" aria-pressed="false">Pause</button>
+    <button id="clearBtn" class="btn small" type="button">Clear</button>
+  </div>
+  <p id="foundEmpty" class="note">Keep browsing in the page you shared. Anything close to your target color is collected here, best match first.</p>
+  <ol id="foundList" class="cards"></ol>
+</section>
 
 <section class="panel" id="panel" aria-label="Reading">
   <div class="verdict" id="verdict" data-state="idle">
@@ -47,6 +62,7 @@
     <button id="holdBtn" class="btn" type="button" aria-pressed="false">Hold</button>
     <button id="hlBtn" class="btn" type="button" aria-pressed="false">Highlight</button>
     <button id="wbBtn" class="btn" type="button">Set white</button>
+    <button id="srcBtn" class="btn" type="button" hidden>Share a page</button>
   </div>
 </section>
 
@@ -57,6 +73,7 @@
     <h1>Color Match</h1>
     <p id="gateMsg">Point your camera at something and see how close its color is to your target code.</p>
     <button id="gateStart" class="btn primary big" type="button">Start camera</button>
+    <button id="gateScreen" class="btn big alt" type="button" hidden>Read a page on this computer</button>
   </div>
 </div>
 
@@ -88,6 +105,7 @@
       <label class="opt"><input type="radio" name="kL" value="3"> Forgiving <small>(recommended in shops: lights and camera exposure change brightness a lot)</small></label>
       <label class="opt"><input type="radio" name="kL" value="1"> Strict <small>(brightness counts fully)</small></label>
     </fieldset>
+    <p id="kLNote" class="note" hidden>Reading a shared page: brightness always counts fully and white balance is off, because a screen has no lighting to correct for.</p>
     <fieldset>
       <legend>Ring size</legend>
       <div class="seg">
@@ -112,12 +130,24 @@
       </ol>
       <p class="note">A phone camera is not a measuring instrument. Use this to pick the best candidate, then judge the final choice by eye in daylight.</p>
     </details>
+    <details>
+      <summary>How to check a web page (computers)</summary>
+      <ol class="note">
+        <li>Open Color Match in its own window (in Chrome or Edge, install it from the address bar), and put it beside the browser you are using.</li>
+        <li>Tap <b>Share a page</b>. Choose the <b>Chrome Tab</b> (or window) with the page you want to check, then Share. Use the browser's own button to switch to another tab later.</li>
+        <li>Browse as usual. The picture here follows that tab. The green marker points at the closest spot on the page to your target.</li>
+        <li>Click or drag on the picture to put the ring on any spot and read its exact color. <b>Hold</b> freezes the page.</li>
+        <li>Open the <b>Found</b> tab: anything close to your target that stays on screen for a moment while you browse is collected there, best match first. The same item is not added twice when you scroll back to it. Keep the Color Match window visible (not minimized or behind another window), or it cannot see the page. The list stays on this computer and is gone when you close the window.</li>
+      </ol>
+      <p class="note">Phones cannot share a screen. Photos on a page are shaded, so check the closest spot rather than expecting one flat color.</p>
+    </details>
     <div class="row"><button id="setClose" class="btn primary" type="button">Done</button></div>
   </div>
 </dialog>
 
 <script src="color.js"></script>
 <script src="logic.js"></script>
+<script src="items.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

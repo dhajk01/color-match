@@ -54,6 +54,18 @@
     return { ok: true, gains };
   }
 
+  // What the ring reads: its average linear color as bytes, hex and ΔE to the target.
+  function readingOf(r, g, b, targetLab, kL) {
+    const rgb = [C.linearToByte(r), C.linearToByte(g), C.linearToByte(b)];
+    return { rgb, hex: C.toHex(rgb[0], rgb[1], rgb[2]), dE: C.deltaE2000(C.linearToLab(r, g, b), targetLab, kL) };
+  }
+
+  // Reading under the ring alone, straight from the pixels: for moving the ring without re-analysing the whole frame.
+  function readingAt(rgba, w, h, ring, gains, targetLab, kL) {
+    const lin = sampleLinear(rgba, w, h, ring, gains);
+    return readingOf(lin[0], lin[1], lin[2], targetLab, kL);
+  }
+
   // The connected patch of cells whose ΔE is within `limit`, grown from the closest cell: its centroid is where to point.
   function closestRegion(dE, w, h, seed, limit) {
     const seen = new Uint8Array(w * h), stack = [seed];
@@ -69,6 +81,46 @@
       if (y < h - 1) push(i + w);
     }
     return { x: sx / n, y: sy / n, cells: n };
+  }
+
+  // Every connected patch (4-neighbour) of cells whose ΔE is within `limit` and that has at least `minCells` cells: candidate items.
+  // box is in cells, x1/y1 exclusive. `edge` is true when the patch touches the picture's border, so it may be cut off by the screen.
+  // Thin strips (an item half-hidden under a sticky header, a border, an underline) are not items: at least minSide cells across, and no more than maxAspect times longer than wide.
+  function findRegions(dE, w, h, { limit, minCells = 16, minSide = 4, maxAspect = 6 }) {
+    const seen = new Uint8Array(w * h), out = [], stack = [];
+    for (let s = 0; s < w * h; s++) {
+      if (seen[s] || dE[s] > limit) continue;
+      seen[s] = 1; stack.length = 0; stack.push(s);
+      const cells = [];
+      let x0 = w, y0 = h, x1 = -1, y1 = -1;
+      while (stack.length) {
+        const i = stack.pop(), x = i % w, y = (i - x) / w;
+        cells.push(i);
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+        const go = (j) => { if (!seen[j] && dE[j] <= limit) { seen[j] = 1; stack.push(j); } };
+        if (x > 0) go(i - 1);
+        if (x < w - 1) go(i + 1);
+        if (y > 0) go(i - w);
+        if (y < h - 1) go(i + w);
+      }
+      if (cells.length < minCells) continue;
+      const bw = x1 + 1 - x0, bh = y1 + 1 - y0;
+      if (Math.min(bw, bh) < minSide || Math.max(bw, bh) > maxAspect * Math.min(bw, bh)) continue;
+      out.push({ cells, box: { x0, y0, x1: x1 + 1, y1: y1 + 1 }, edge: x0 === 0 || y0 === 0 || x1 === w - 1 || y1 === h - 1 });
+    }
+    return out;
+  }
+
+  // What a patch looks like: the average color of its closest half (so a shaded photo is judged by its good part) and that color's ΔE.
+  function regionStats(rgba, region, gains, targetLab, kL, dE) {
+    const g = gains || [1, 1, 1];
+    const idx = region.cells.slice().sort((a, b) => dE[a] - dE[b]).slice(0, Math.max(1, Math.ceil(region.cells.length / 2)));
+    let r = 0, gg = 0, b = 0;
+    for (const i of idx) {
+      const q = i * 4;
+      r += clamp01(LIN[rgba[q]] * g[0]); gg += clamp01(LIN[rgba[q + 1]] * g[1]); b += clamp01(LIN[rgba[q + 2]] * g[2]);
+    }
+    return readingOf(r / idx.length, gg / idx.length, b / idx.length, targetLab, kL);
   }
 
   // Per-cell ΔE to the target (each cell averaged with its 8 neighbours so one noisy pixel cannot win),
@@ -105,12 +157,11 @@
     let r = 0, gg = 0, b = 0;
     for (const i of cells) { r += lin[i * 3]; gg += lin[i * 3 + 1]; b += lin[i * 3 + 2]; }
     r /= cells.length; gg /= cells.length; b /= cells.length;
-    const rgb = [C.linearToByte(r), C.linearToByte(gg), C.linearToByte(b)];
     const region = closestRegion(dE, w, h, bestI, bestD + (margin == null ? 1 : margin));
     return {
       dE,
       best: { x: region.x, y: region.y, dE: bestD, cells: region.cells },
-      reading: { rgb, hex: C.toHex(rgb[0], rgb[1], rgb[2]), dE: C.deltaE2000(C.linearToLab(r, gg, b), targetLab, kL) },
+      reading: readingOf(r, gg, b, targetLab, kL),
     };
   }
 
@@ -126,5 +177,5 @@
 
   const verdict = (dE, tol) => (dE <= tol ? 'match' : dE <= 2 * tol ? 'close' : 'no');
 
-  return { WHITE, cellsInRing, sampleLinear, whiteGains, closestRegion, analyzeFrame, maskFromDE, verdict };
+  return { WHITE, cellsInRing, sampleLinear, whiteGains, readingAt, findRegions, regionStats, closestRegion, analyzeFrame, maskFromDE, verdict };
 });
